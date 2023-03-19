@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33502.453
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cuda_bfs_modern", "cuda_bfs_modern\cuda_bfs_modern.vcxproj", "{23F64853-8F95-49AD-A15D-08943ED13366}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{23F64853-8F95-49AD-A15D-08943ED13366}.Debug|x64.ActiveCfg = Debug|x64
+		{23F64853-8F95-49AD-A15D-08943ED13366}.Debug|x64.Build.0 = Debug|x64
+		{23F64853-8F95-49AD-A15D-08943ED13366}.Release|x64.ActiveCfg = Release|x64
+		{23F64853-8F95-49AD-A15D-08943ED13366}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0744AAD6-32F0-4FA0-BF8E-AD6D356785C6}
+	EndGlobalSection
+EndGlobal
