@@ -70,7 +70,7 @@ __global__ void kernel_cuda_per_edge_basic(int *v_adj_from, int *v_adj_to, int n
 }
 // The BFS frontier corresponds to all the nodes being processed at the current level.
 
-
+//instead of creating a graph in the way that we do in the method seen below we should do CSR??
 int main()
 {
 
