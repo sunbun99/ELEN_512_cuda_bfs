@@ -51,7 +51,23 @@ __global__ void CUDA_BFS_KERNEL(Node* Va, int* Ea, bool* Fa, bool* Xa, int* Ca, 
 	}
 
 }
+__global__ void kernel_cuda_per_edge_basic(int *v_adj_from, int *v_adj_to, int num_edges, int *result, bool *still_running){
+	int tid = blockIdx.x * blockDim.x + threadIdx.x;
+	int num_threads = blockDim.x * gridDim.x;
+	
+	for (int e = 0; e < num_edges; e += num_threads){
+		int edge = e + tid;
+		if (edge < num_edges){
+			int to_vertex = v_adj_to[edge];
+			int new_len = result[v_adj_from[edge]] + 1;
 
+			if (new_len < result[to_vertex]){
+			result[to_vertex] = new_len;
+			*still_running = true;
+			}
+		}
+	}
+}
 // The BFS frontier corresponds to all the nodes being processed at the current level.
 
 
