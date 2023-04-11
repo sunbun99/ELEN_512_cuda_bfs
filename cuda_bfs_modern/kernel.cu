@@ -61,6 +61,7 @@ __global__ void CUDA_BFS_KERNEL(Node* Va, int* Ea, bool* Fa, bool* Xa, int* Ca, 
 	}
 
 }
+/*
 __global__ void kernel_cuda_simple(
     int *v_adj_list,
     int *v_adj_begin,
@@ -288,7 +289,7 @@ int bfs_cuda_per_edge_basic(
     // printf("%i kernel runs\n", kernel_runs);
 
     return time;
-}
+}*/
 
 // The BFS frontier corresponds to all the nodes being processed at the current level.
 
@@ -512,10 +513,20 @@ int main()
 	printf("Number of times the kernel is called : %d \n", count);
 
 
+
 	printf("\nCost: ");
 	for (int i = 0; i < NUM_NODES; i++)
 		printf("%d    ", cost[i]);
 	printf("\n");
+
+	cudaFree(Va);
+	cudaFree(Ea);
+	cudaFree(Fa);
+	cudaFree(Xa);
+	cudaFree(Ca);
+
+	free(node);
+	free(edges);
 	_getch();
 
 }
