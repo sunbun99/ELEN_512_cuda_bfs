@@ -18,8 +18,22 @@
 
 #include <windows.h>  
 
-#define NUM_NODES 15606
-#define NUM_EDGES 45878
+
+//#define FILE_NAME "4elt.graph.txt"
+//#define NUM_NODES 15606
+//#define NUM_EDGES 45878
+
+//#define FILE_NAME "mdual.graph"
+//#define NUM_NODES 258569
+//#define NUM_EDGES 513132
+
+#define FILE_NAME "citationCiteseer.graph"
+#define NUM_NODES 268495
+#define NUM_EDGES 1156647
+
+#define PRINT_FRONT false
+#define PRINT_COST false
+#define PRINT_VISITED false
 
 typedef struct
 {
@@ -27,17 +41,23 @@ typedef struct
 	int length;    // Number of adjacent nodes 
 } Node;
 
-__global__ void CUDA_BFS_KERNEL(Node* Va, int* Ea, bool* Fa, bool* Xa, int* Ca, bool* done)
+__global__ void CUDA_BFS_KERNEL(Node* Va, int* Ea, bool* Fa, bool* Xa, int* Ca, bool* done, int num_nodes)
 {
 
 	int id = threadIdx.x + blockIdx.x * blockDim.x;
-	if (id > NUM_NODES)
-		*done = false;
+	if (id > num_nodes)
+		//if (id > NUM_NODES)
+		return;
+	//*done = false;
 
+	bool front = Fa[id];
+	bool visted = Xa[id];
+	int cost = Ca[id];
 
 	if (Fa[id] == true && Xa[id] == false)
 	{
-		printf("%d ", id); //This printf gives the order of vertices in BFS	
+		if(PRINT_FRONT)
+			printf("%d ", id); //This printf gives the order of vertices in BFS	
 		Fa[id] = false;
 		Xa[id] = true;
 		__syncthreads();
@@ -61,235 +81,6 @@ __global__ void CUDA_BFS_KERNEL(Node* Va, int* Ea, bool* Fa, bool* Xa, int* Ca, 
 	}
 
 }
-/*
-__global__ void kernel_cuda_simple(
-    int *v_adj_list,
-    int *v_adj_begin,
-    int *v_adj_length,
-    int num_vertices,
-    int *result,
-    bool *still_running)
-{
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    int num_threads = blockDim.x * gridDim.x;
-
-    for (int v = 0; v < num_vertices; v += num_threads)
-    {
-        int vertex = v + tid;
-
-        if (vertex < num_vertices)
-        {
-            for (int n = 0; n < v_adj_length[vertex]; n++)
-            {
-                int neighbor = v_adj_list[v_adj_begin[vertex] + n];
-
-                if (result[neighbor] > result[vertex] + 1)
-                {
-                    result[neighbor] = result[vertex] + 1;
-                    *still_running = true;
-                }
-            }
-        }
-    }
-}
-
-int bfs_cuda_simple(
-    int *v_adj_list,
-    int *v_adj_begin, 
-    int *v_adj_length, 
-    int num_vertices, 
-    int num_edges,
-    int start_vertex, 
-    int *result)
-{
-    int *k_v_adj_list;
-    int *k_v_adj_begin;
-    int *k_v_adj_length;
-    int *k_result;
-    bool *k_still_running;
-
-    int kernel_runs = 0;
-    bool *still_running = new bool[1];
-    fill_n(result, num_vertices, MAX_DIST);
-    result[start_vertex] = 0;
-    bool false_value = false;
-
-    cudaMalloc(&k_v_adj_list, sizeof(int) * num_edges);
-    cudaMalloc(&k_v_adj_begin, sizeof(int) * num_vertices);
-    cudaMalloc(&k_v_adj_length, sizeof(int) * num_vertices);
-    cudaMalloc(&k_result, sizeof(int) * num_vertices);
-    cudaMalloc(&k_still_running, sizeof(bool) * 1);
-
-    cudaMemcpy(k_v_adj_list, v_adj_list, sizeof(int) * num_edges, cudaMemcpyHostToDevice);
-    cudaMemcpy(k_v_adj_begin, v_adj_begin, sizeof(int) * num_vertices, cudaMemcpyHostToDevice);
-    cudaMemcpy(k_v_adj_length, v_adj_length, sizeof(int) * num_vertices, cudaMemcpyHostToDevice);
-    cudaMemcpy(k_result, result, sizeof(int) * num_vertices, cudaMemcpyHostToDevice);
-
-
-    // --- START MEASURE TIME ---
-
-    
-    struct timeval t1, t2;
-    gettimeofday(&t1, NULL);
-
-    do
-    {
-        cudaMemcpy(k_still_running, &false_value, sizeof(bool) * 1, cudaMemcpyHostToDevice);
-
-        kernel_cuda_simple<<<BLOCKS, THREADS>>>(
-            k_v_adj_list, 
-            k_v_adj_begin, 
-            k_v_adj_length, 
-            num_vertices, 
-            k_result, 
-            k_still_running);
-
-        kernel_runs++;
-
-        cudaMemcpy(still_running, k_still_running, sizeof(bool) * 1, cudaMemcpyDeviceToHost);
-    } while (*still_running);
-
-    cudaThreadSynchronize();
-
-    gettimeofday(&t2, NULL);
-    long long time = get_elapsed_time(&t1, &t2);
-
-    if (report_time)
-    {
-        printf("%s,%i,%i,%i,%i,%lld\n", __FILE__, num_vertices, num_edges, BLOCKS, THREADS, time); 
-    }
-
-
-    // --- END MEASURE TIME ---
-
-
-    cudaMemcpy(result, k_result, sizeof(int) * num_vertices, cudaMemcpyDeviceToHost);
-
-    cudaFree(k_v_adj_list);
-    cudaFree(k_v_adj_begin);
-    cudaFree(k_v_adj_length);
-    cudaFree(k_result);
-    cudaFree(k_still_running);
-
-    // printf("%i kernel runs\n", kernel_runs);
-
-    return time;
-}
-__global__ void kernel_cuda_per_edge_basic(int *v_adj_from, int *v_adj_to, int num_edges, int *result, bool *still_running){
-	int tid = blockIdx.x * blockDim.x + threadIdx.x;
-	int num_threads = blockDim.x * gridDim.x;
-	
-	for (int e = 0; e < num_edges; e += num_threads){
-		int edge = e + tid;
-		if (edge < num_edges){
-			int to_vertex = v_adj_to[edge];
-			int new_len = result[v_adj_from[edge]] + 1;
-
-			if (new_len < result[to_vertex]){
-			result[to_vertex] = new_len;
-			*still_running = true;
-			}
-		}
-	}
-}
-
-int bfs_cuda_per_edge_basic(
-    int *v_adj_list,
-    int *v_adj_begin, 
-    int *v_adj_length, 
-    int num_vertices, 
-    int num_edges,
-    int start_vertex, 
-    int *result)
-{
-    // Convert data
-    // TODO: Check if it is better to allocate only one array
-    int *v_adj_from = new int[num_edges];
-    int *v_adj_to = new int[num_edges];
-
-    int next_index = 0;
-    for (int i = 0; i < num_vertices; i++)
-    {
-        for (int j = v_adj_begin[i]; j < v_adj_length[i] + v_adj_begin[i]; j++)
-        {
-            v_adj_from[next_index] = i;
-            v_adj_to[next_index++] = v_adj_list[j];
-        }
-    }
-
-    int *k_v_adj_from;
-    int *k_v_adj_to;
-    int *k_result;
-    bool *k_still_running;
-
-    int kernel_runs = 0;
-
-    fill_n(result, num_vertices, MAX_DIST);
-    result[start_vertex] = 0;
-
-    bool *still_running = new bool[1];
-
-    cudaMalloc(&k_v_adj_from, sizeof(int) * num_edges);
-    cudaMalloc(&k_v_adj_to, sizeof(int) * num_edges);
-    cudaMalloc(&k_result, sizeof(int) * num_vertices);
-    cudaMalloc(&k_still_running, sizeof(bool) * 1);
-
-    cudaMemcpy(k_v_adj_from, v_adj_from, sizeof(int) * num_edges, cudaMemcpyHostToDevice);
-    cudaMemcpy(k_v_adj_to, v_adj_to, sizeof(int) * num_edges, cudaMemcpyHostToDevice);
-    cudaMemcpy(k_result, result, sizeof(int) * num_vertices, cudaMemcpyHostToDevice);
-
-
-    // --- START MEASURE TIME ---
-
-
-    struct timeval t1, t2;
-    gettimeofday(&t1, NULL);
-
-    do
-    {
-        *still_running = false;
-        cudaMemcpy(k_still_running, still_running, sizeof(bool) * 1, cudaMemcpyHostToDevice);
-
-        kernel_cuda_per_edge_basic<<<BLOCKS, THREADS>>>(
-            k_v_adj_from, 
-            k_v_adj_to, 
-            num_edges, 
-            k_result, 
-            k_still_running);
-
-        kernel_runs++;
-
-        cudaMemcpy(still_running, k_still_running, sizeof(bool) * 1, cudaMemcpyDeviceToHost);
-    } while (*still_running);
-
-    cudaThreadSynchronize();
-
-    gettimeofday(&t2, NULL);
-    long long time = get_elapsed_time(&t1, &t2);
-
-    if (report_time)
-    {
-        printf("%s,%i,%i,%i,%i,%lld\n", __FILE__, num_vertices, num_edges, BLOCKS, THREADS, time); 
-    }
-
-
-    // --- END MEASURE TIME ---
-
-
-    cudaMemcpy(result, k_result, sizeof(int) * num_vertices, cudaMemcpyDeviceToHost);
-
-    cudaFree(k_v_adj_from);
-    cudaFree(k_v_adj_to);
-    cudaFree(k_result);
-    cudaFree(k_still_running);
-
-    free(v_adj_from);
-    free(v_adj_to);
-
-    // printf("%i kernel runs\n", kernel_runs);
-
-    return time;
-}*/
 
 // The BFS frontier corresponds to all the nodes being processed at the current level.
 
@@ -297,9 +88,7 @@ int bfs_cuda_per_edge_basic(
 int main()
 {
 	FILE* myFile;
-	myFile = fopen("4elt.graph.txt", "r");
-	// myFile = fopen("mdual.graph", "r");
-	// myFile = fopen("citationCiteseer.graph", "r");
+	myFile = fopen(FILE_NAME, "r");
 
 	//myFile = fopen("test.graph", "r");
 	
@@ -466,8 +255,8 @@ int main()
 	cudaMemcpy(Va, node, sizeof(Node) * nodes.size(), cudaMemcpyHostToDevice);
 
 	int* Ea;
-	cudaMalloc((void**)&Ea, sizeof(Node) * nodes.size());
-	cudaMemcpy(Ea, edges, sizeof(Node) * nodes.size(), cudaMemcpyHostToDevice);
+	cudaMalloc((void**)&Ea, sizeof(int) * edges_.size());
+	cudaMemcpy(Ea, edges, sizeof(int) * edges_.size(), cudaMemcpyHostToDevice);
 
 	bool* Fa;
 	cudaMalloc((void**)&Fa, sizeof(bool) * nodes.size());
@@ -484,7 +273,7 @@ int main()
 
 
 	//int num_blks = (512 / NUM_NODES)+1;
-	int num_blks = NUM_NODES / 512;
+	int num_blks = (NUM_NODES / 512)+1;
 	int threads = 512;
 
 
@@ -492,33 +281,69 @@ int main()
 	bool done;
 	bool* d_done;
 	cudaMalloc((void**)&d_done, sizeof(bool));
-	printf("\n\n");
+	printf("\n");
 	int count = 0;
 
-	printf("Order: \n\n");
+	LARGE_INTEGER frequency;        // ticks per second
+	LARGE_INTEGER t1, t2;           // ticks
+	double elapsedTime;
+
+	// get ticks per second
+	QueryPerformanceFrequency(&frequency);
+
+	// start timer
+	QueryPerformanceCounter(&t1);
+
+	printf("Traversing graph \n");
+
+	if(PRINT_FRONT)
+		printf("Order: \n\n");
 	do {
 		count++;
 		done = true;
 		cudaMemcpy(d_done, &done, sizeof(bool), cudaMemcpyHostToDevice);
-		CUDA_BFS_KERNEL <<< num_blks, threads >>> (Va, Ea, Fa, Xa, Ca, d_done);
+		CUDA_BFS_KERNEL <<< num_blks, threads >>> (Va, Ea, Fa, Xa, Ca, d_done, nodes.size());
 		cudaMemcpy(&done, d_done, sizeof(bool), cudaMemcpyDeviceToHost);
 
 	} while (!done);
+
+	printf("Done \n\n");
+
+	QueryPerformanceCounter(&t2);
+	// compute and print the elapsed time in millisec
+	elapsedTime = (t2.QuadPart - t1.QuadPart) * 1000.0 / frequency.QuadPart;
+	printf("%f ms.\n", elapsedTime);
 
 
 
 
 	cudaMemcpy(cost, Ca, sizeof(int) * nodes.size(), cudaMemcpyDeviceToHost);
 
+	cudaMemcpy(visited, Xa, sizeof(bool) * nodes.size(), cudaMemcpyDeviceToHost);
+
 	printf("Number of times the kernel is called : %d \n", count);
 
 
 
-	printf("\nCost: ");
-	for (int i = 0; i < NUM_NODES; i++)
-		printf("%d    ", cost[i]);
-	printf("\n");
+	//printf("\nCost: ");
+	//for (int i = 0; i < nodes.size(); i++)
+	//	printf("%d    ", cost[i]);
+	//printf("\n");
 
+	//printf("\nVisited: ");
+	//for (int i = 0; i < nodes.size(); i++)
+	//	printf("%d    ", visited[i]);
+	//printf("\n");
+
+	int missed = 0;
+
+	for (int i = 0; i < nodes.size(); i++)
+		if (!visited[i])
+			missed++;
+
+	printf("Missed nodes: %d\n", missed);
+
+	cudaFree(d_done);
 	cudaFree(Va);
 	cudaFree(Ea);
 	cudaFree(Fa);
